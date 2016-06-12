@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import csv
 import sys
 import os
@@ -6,33 +8,31 @@ import processing as ps
 COUNT_TABLE_SEQUENCE_COL = 0
 COUNT_TABLE_SAMPLE_START_COL = 2
 
-if len(sys.argv) != 6 and len(sys.argv) != 7:
-	print "Usage: python " + sys.argv[0] + " [.count_table File] [Metadata File] [Sample ID Col] [Sample Type Col] [Negative Control Sample Type]  [Batch Col - Optional]"
+sampleIDCol = 0
+diseaseCol = 1
+batchCol = 2
+
+if len(sys.argv) != 5:
+	print(("Usage: python " + sys.argv[0] + " [.count_table File] [Metadata File] [Negative Control Identifier] [Use Batch? - Y/N]"))
 	sys.exit(1)
 
-print "\n"
+print("\n")
 
 sharedFile = sys.argv[1]
 metadataFile = sys.argv[2]
-sampleIDCol = int(sys.argv[3]) - 1
-diseaseCol = int(sys.argv[4]) - 1
-negSamplePhrase = sys.argv[5]
+negSamplePhrase = sys.argv[3]
+useBatch = sys.argv[4]
 
 isBatch = False
-batchCol = -1
-if len(sys.argv) == 7:
+if useBatch.lower() == "y" or useBatch.lower() == "yes":
 	isBatch = True
-	batchCol = int(sys.argv[6]) - 1
-	print "Negative Control Sample Sequence Subtraction [By Batch]\n"
+	print("Negative Control Sample Sequence Subtraction [By Batch]\n")
 else:
-	print "Negative Control Sample Sequence Subtraction\n"
-	
-sharedFile = sharedFile.replace('"', "")
-otuTableSharedTSV = csv.reader(open(sharedFile), delimiter='\t', quotechar='|')
-countTable = ps.processOTUMap(otuTableSharedTSV)
+	print("Negative Control Sample Sequence Subtraction\n")
 
-sampleIDMapTSV = csv.reader(open(metadataFile), delimiter='\t', quotechar='|')
-metadata = ps.processOTUMap(sampleIDMapTSV)
+sharedFile = sharedFile.replace('"', "")
+countTable = ps.readInputFile(sharedFile)
+metadata = ps.readInputFile(metadataFile)
 
 
 # 
@@ -45,6 +45,12 @@ if isBatch:
 	newFilename = newFilename + ".batch.negsubtracted." + fileExt
 else:
 	newFilename = newFilename + ".negsubtracted." + fileExt
+
+accnosFile = sharedFile.rsplit('.', 1)[0]
+if isBatch:
+	accnosFile = accnosFile + ".batch.negremoved.accnos"
+else:
+	accnosFile = accnosFile + ".negremoved.accnos"
 
 
 if not isBatch:
@@ -89,10 +95,11 @@ if not isBatch:
 				numRemoved += 1
 
 		if i % 200 == 0 and i > 0:
-			print "Processed " + str(i) + " / " + str(len(countTable))
+			print("Processed " + str(i) + " / " + str(len(countTable)))
 		i += 1
 
 	# Creates new count table excluding the negative samples columns and excluding the sequences with all zero counts
+	removedSequences = []
 	r = 0
 	newCountTable = []
 	while r < len(countTable):
@@ -104,15 +111,19 @@ if not isBatch:
 					newRow.append(countTable[r][c])
 				c = c + 1
 			newCountTable.append(newRow)
+		else:
+			removedSequences.append([countTable[r][COUNT_TABLE_SEQUENCE_COL]])
 		r += 1
 		
-	ps.exportToCSV(newCountTable, newFilename)
+	ps.exportToFile(newCountTable, newFilename)
 
-	print "================================================="
-	print "Finished subtracting negative sequence counts"
+	print("=================================================")
+	print("Finished subtracting negative sequence counts")
 	if numRemoved > 0:
-		print "Number of sequences removed : " + str(numRemoved)
-	print "Output file at: " + newFilename
+		ps.exportToFile(removedSequences, accnosFile)
+		print("Number of sequences removed : " + str(numRemoved))
+		print("Accnos file at: " + accnosFile)
+	print("Output file at: " + newFilename)
 
 
 
@@ -170,11 +181,12 @@ else:
 				numRemoved += 1
 
 		if i % 200 == 0 and i > 0:
-			print "Processed " + str(i) + " / " + str(len(countTable))
+			print("Processed " + str(i) + " / " + str(len(countTable)))
 		i += 1
 
 
 	# Creates new count table excluding the negative samples columns and excluding the sequences with all zero counts
+	removedSequences = []
 	r = 0
 	newCountTable = []
 	while r < len(countTable):
@@ -186,12 +198,16 @@ else:
 					newRow.append(countTable[r][c])
 				c = c + 1
 			newCountTable.append(newRow)
+		else:
+			removedSequences.append([countTable[r][COUNT_TABLE_SEQUENCE_COL]])
 		r += 1
 		
-	ps.exportToCSV(newCountTable, newFilename)
+	ps.exportToFile(newCountTable, newFilename)
 
-	print "================================================="
-	print "Finished subtracting negative sequence counts by batch"
+	print("=================================================")
+	print("Finished subtracting negative sequence counts by batch")
 	if numRemoved > 0:
-		print "Number of sequences removed : " + str(numRemoved)
-	print "Output file at: " + newFilename
+		ps.exportToFile(removedSequences, accnosFile)
+		print("Number of sequences removed : " + str(numRemoved))
+		print("Accnos file at: " + accnosFile)
+	print("Output file at: " + newFilename)

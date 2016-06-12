@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import csv
 import sys
 import os
@@ -6,33 +8,31 @@ import processing as ps
 OTU_TABLE_SAMPLE_ID_COL = 1
 OTU_TABLE_OTU_START_COL = 3
 
-if len(sys.argv) != 6 and len(sys.argv) != 7:
-	print "Usage: python " + sys.argv[0] + " [.shared File] [Metadata File] [Sample ID Col] [Sample Type Col] [Negative Control Sample Type]  [Batch Col - Optional]"
+sampleIDCol = 0
+diseaseCol = 1
+batchCol = 2
+
+if len(sys.argv) != 5:
+	print("Usage: python " + sys.argv[0] + " [.shared File] [Metadata File] [Negative Control Sample Type] [Use Batch? - Y/N]")
 	sys.exit(1)
-	
+
+print("\n")
+
 sharedFile = sys.argv[1]
 metadataFile = sys.argv[2]
-sampleIDCol = int(sys.argv[3]) - 1
-diseaseCol = int(sys.argv[4]) - 1
-negSamplePhrase = sys.argv[5]
-
-print "\n"
+negSamplePhrase = sys.argv[3]
+useBatch = sys.argv[4]
 
 isBatch = False
-batchCol = -1
-if len(sys.argv) == 7:
+if useBatch.lower() == "y" or useBatch.lower() == "yes":
 	isBatch = True
-	batchCol = int(sys.argv[6]) - 1
-	print "Negative Control Sample OTU Removal [By Batch]\n"
+	print("Negative Control Sample OTU Subtraction [By Batch]\n")
 else:
-	print "Negative Control Sample OTU Removal\n"
+	print("Negative Control Sample OTU Subtraction\n")
 
 sharedFile = sharedFile.replace('"', "")
-otuTableSharedTSV = csv.reader(open(sharedFile), delimiter='\t', quotechar='|')
-base = ps.processOTUMap(otuTableSharedTSV)
-
-sampleIDMapTSV = csv.reader(open(metadataFile), delimiter='\t', quotechar='|')
-metadata = ps.processOTUMap(sampleIDMapTSV)
+otuTableSharedTSV = ps.readInputFile(sharedFile)
+metadata = ps.readInputFile(metadataFile)
 
 
 # 
@@ -117,12 +117,12 @@ if isBatch:
 			newBase.append(newRow)
 		r += 1
 
-	ps.exportToCSV(newBase, newFilename)
+	ps.exportToFile(newBase, newFilename)
 
-	print "================================================="
-	print "Finished!"
-	print "Removed " + str(numOTUsRemoved) + " OTUs"
-	print "Output file at: " + newFilename
+	print("=================================================")
+	print("Finished!")
+	print("Removed " + str(numOTUsRemoved) + " OTUs")
+	print("Output file at: " + newFilename)
 
 else:
 	negSampleIDs = {}
@@ -179,9 +179,9 @@ else:
 			newBase.append(newRow)
 		r += 1
 
-	ps.exportToCSV(newBase, newFilename)
+	ps.exportToFile(newBase, newFilename)
 
-	print "================================================="
-	print "Finished!"
-	print "Removed " + str(numOTUsRemoved) + " OTUs"
-	print "Output file at: " + newFilename
+	print("=================================================")
+	print("Finished!")
+	print("Removed " + str(numOTUsRemoved) + " OTUs")
+	print("Output file at: " + newFilename)
